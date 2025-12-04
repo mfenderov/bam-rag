@@ -1,0 +1,25 @@
+elasticsearch:
+  addresses:
+    - http://localhost:9200
+  index: bam-rag-enriched-test
+
+embeddings:
+  enabled: true
+  socket_path: /Users/mark.fenderov/.docker/run/docker.sock
+  model: ai/qwen3-embedding
+
+llm:
+  enabled: true
+  socket_path: /Users/mark.fenderov/.docker/run/docker.sock
+  model: ai/gemma3
+
+scraper:
+  delay: 500ms
+  max_depth: 1
+  follow_links: false
+  user_agent: bam-rag/1.0
+  try_markdown_first: true
+
+mcp:
+  name: bam-rag
+  version: 1.0.0

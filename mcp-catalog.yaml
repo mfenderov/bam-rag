@@ -1,0 +1,41 @@
+# Docker MCP Catalog entry for bam-rag
+# Use: docker mcp catalog import ./mcp-catalog.yaml
+
+name: bam-rag
+description: RAG system for searching indexed documentation
+icon: 📚
+
+servers:
+  bam-rag:
+    description: Search indexed documentation with BM25 keyword search
+    image: bam-rag:latest
+
+    # Run in same network as Elasticsearch
+    network: bam-rag_default
+
+    # Environment variables for ES connection
+    environment:
+      BAMRAG_ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
+      BAMRAG_ELASTICSEARCH_INDEX: bam-rag-chunks
+
+    # Tools exposed by this server
+    tools:
+      - name: search_documents
+        description: Search indexed documentation chunks by query
+        parameters:
+          query:
+            type: string
+            description: Search query string
+            required: true
+          limit:
+            type: integer
+            description: Maximum results (default 10)
+            required: false
+
+      - name: get_chunk
+        description: Get a specific documentation chunk by ID
+        parameters:
+          id:
+            type: string
+            description: Chunk ID to retrieve
+            required: true
