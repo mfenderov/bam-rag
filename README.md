@@ -6,11 +6,36 @@ A toy RAG (Retrieval-Augmented Generation) system for learning and experimentati
 
 Scrapes documentation → enriches with LLM → indexes with hybrid search → serves via MCP
 
-```
-[Scraper] → [S3] → [Ingestion] → [Elasticsearch]
-                        ↓
-              [LLM: tags/summary]
-              [Embeddings: vectors]
+```mermaid
+flowchart LR
+    subgraph scrape["① Scrape"]
+        URL[🌐 URL] --> S[Colly]
+        S --> MD{".md?"}
+        MD -->|yes| RAW[Markdown]
+        MD -->|no| HTML[HTML] --> RAW
+    end
+
+    subgraph store["② Store"]
+        MINIO[(MinIO)]
+    end
+
+    subgraph enrich["③ Enrich"]
+        ENG[Engine]
+        LLM["🤖 Gemma3<br/>tags + summary"]
+        EMB["🧮 qwen3<br/>embeddings"]
+        ENG <--> LLM
+        ENG <--> EMB
+    end
+
+    subgraph index["④ Index"]
+        ES[("Elasticsearch<br/>BM25 + KNN")]
+    end
+
+    subgraph query["⑤ Query"]
+        MCP[MCP Server] <--> CLAUDE[Claude]
+    end
+
+    RAW --> MINIO --> ENG --> ES <--> MCP
 ```
 
 ## Prerequisites
@@ -69,7 +94,37 @@ make build         # Build binary
 
 ## Architecture
 
-Event-driven with Go channels. Scraper writes to S3, sends event, ingestion worker processes independently. No orchestrator - pure choreography.
+Event-driven choreography with Go channels—no central orchestrator.
+
+```mermaid
+sequenceDiagram
+    participant CLI as bam-rag
+    participant Scraper
+    participant S3 as MinIO
+    participant Engine as Ingestion
+    participant LLM as Gemma3
+    participant Embed as qwen3
+    participant ES as Elasticsearch
+
+    CLI->>Scraper: scrape URL
+    loop each page
+        Scraper->>S3: store .md
+    end
+    Scraper-->>Engine: ScrapeComplete
+
+    loop each doc
+        Engine->>S3: read content
+        Engine->>LLM: generate tags/summary
+        Engine->>Embed: generate vector
+        Engine->>ES: index
+    end
+    Note over ES: Ready for hybrid search!
+```
+
+**Key design choices:**
+- **S3 checkpoint** — Re-run ingestion without re-scraping
+- **Optional enrichment** — Works without LLM/embeddings (graceful degradation)
+- **Hybrid search** — BM25 + KNN combined via Reciprocal Rank Fusion (RRF)
 
 ## Configuration
 
